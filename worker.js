@@ -9,6 +9,9 @@ const jsonResponse = (body, status = 200) =>
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
 
+const errorResponse = (error, status) =>
+  jsonResponse({ ok: false, error }, status);
+
 const escapeHtml = (value) =>
   value.replace(/[&<>"']/g, (character) => {
     const entities = {
@@ -31,29 +34,39 @@ const getTextField = (body, name, maxLength, required = false) => {
   return trimmed;
 };
 
+const getAliasedTextField = (body, names, maxLength, required = false) => {
+  const name = names.find((field) => Object.hasOwn(body, field)) ?? names[0];
+  return getTextField(body, name, maxLength, required);
+};
+
 const sendTelegramMessage = async (request, env) => {
   if (!request.headers.get("content-type")?.includes("application/json")) {
-    return jsonResponse({ error: "Expected application/json" }, 415);
+    return errorResponse("Expected application/json", 415);
   }
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
+    return errorResponse("Invalid JSON", 400);
   }
 
   if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return jsonResponse({ error: "Invalid request body" }, 400);
+    return errorResponse("Invalid request body", 400);
   }
 
   if (typeof body.website === "string" && body.website.trim()) {
-    return jsonResponse({ error: "Invalid submission" }, 400);
+    return errorResponse("Invalid submission", 400);
   }
 
   const name = getTextField(body, "name", MAX_NAME_LENGTH, true);
-  const contact = getTextField(body, "contact", MAX_CONTACT_LENGTH, true);
-  const message = getTextField(body, "message", MAX_MESSAGE_LENGTH);
+  const contact = getAliasedTextField(
+    body,
+    ["contact", "phone"],
+    MAX_CONTACT_LENGTH,
+    true,
+  );
+  const message = getAliasedTextField(body, ["message", "task"], MAX_MESSAGE_LENGTH);
   const tariff = getTextField(body, "tariff", MAX_TARIFF_LENGTH);
 
   if (
@@ -63,12 +76,12 @@ const sendTelegramMessage = async (request, env) => {
     tariff === null ||
     (!message && !tariff)
   ) {
-    return jsonResponse({ error: "Invalid or incomplete request" }, 400);
+    return errorResponse("Invalid or incomplete request", 400);
   }
 
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
     console.error("Telegram integration is missing required environment variables");
-    return jsonResponse({ error: "Request delivery is not configured" }, 500);
+    return errorResponse("Request delivery is not configured", 500);
   }
 
   const lines = [
@@ -96,24 +109,35 @@ const sendTelegramMessage = async (request, env) => {
       },
     );
   } catch (error) {
-    console.error("Telegram request failed", error.name);
-    return jsonResponse({ error: "Could not deliver the request" }, 502);
+    console.error("Telegram request failed", error);
+    return errorResponse(error.message || "Telegram request failed", 502);
+  }
+
+  let responseText;
+  try {
+    responseText = await telegramResponse.text();
+  } catch (error) {
+    console.error("Could not read Telegram response", error);
+    return errorResponse(error.message || "Could not read Telegram response", 502);
   }
 
   let result;
   try {
-    result = await telegramResponse.json();
-  } catch (error) {
-    console.error("Could not read Telegram response", error);
-    return jsonResponse({ error: "Could not deliver the request" }, 502);
+    result = JSON.parse(responseText);
+  } catch {
+    result = null;
   }
 
   if (!telegramResponse.ok || !result || result.ok !== true) {
+    const error =
+      typeof result?.description === "string" && result.description
+        ? result.description
+        : responseText || `Telegram returned HTTP ${telegramResponse.status}`;
     console.error("Telegram rejected the request", {
       status: telegramResponse.status,
-      description: result?.description,
+      error,
     });
-    return jsonResponse({ error: "Could not deliver the request" }, 502);
+    return errorResponse(error, 502);
   }
 
   return jsonResponse({ ok: true });

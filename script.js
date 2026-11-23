@@ -108,8 +108,16 @@ const sendLead = async (lead) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(lead),
   });
-  if (!response.ok) {
-    throw new Error("Не удалось отправить заявку.");
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("Сервер вернул некорректный ответ.");
+  }
+
+  if (!response.ok || !result || result.ok !== true) {
+    throw new Error(result?.error || "Не удалось отправить заявку.");
   }
 };
 
@@ -137,7 +145,7 @@ contactForm.addEventListener("submit", async (event) => {
     showToast("Заявка отправлена — скоро свяжемся с вами");
     contactForm.reset();
   } catch (error) {
-    console.error(error);
+    console.error("Не удалось отправить заявку:", error.message);
     showToast("Не удалось отправить заявку. Попробуйте еще раз позже.");
   } finally {
     submitButton.disabled = false;
@@ -266,7 +274,7 @@ const sendChatQuestion = async (question) => {
       chatLead = null;
       chatQuickReplies.hidden = false;
     } catch (error) {
-      console.error(error);
+      console.error("Не удалось отправить заявку:", error.message);
       chatLead.stage = "message";
       deliveryStatus.textContent = "Не удалось отправить заявку. Проверьте соединение и отправьте описание еще раз.";
     } finally {
