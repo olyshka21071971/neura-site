@@ -230,17 +230,45 @@ const notifyOwnerAboutLead = async (env, message, text) => {
 const hasPhoneNumber = (text) =>
   /(?:^|[\s(])(?:\+?\d[\d\s().-]{7,}\d)(?:$|[\s),.!?])/u.test(text);
 
-const isOrderRequest = (text) =>
-  /заказ|заказать|хочу\s+(?:купить|заказать|сайт|бот)|оформить|оставить\s+заявк|связаться|нужен\s+(?:сайт|лендинг|бот)|сделать\s+(?:сайт|лендинг)|создать\s+(?:сайт|лендинг)|разработ(?:ать|ка)/iu.test(
-    text,
-  );
-
 const getGroqAnswer = async (env, question) => {
   const apiKey = env.GROQ_API_KEY?.trim();
   if (!apiKey) return null;
 
   let httpStatus = null;
+  let endpoint = "models";
   try {
+    const modelsResponse = await fetch(
+      "https://api.groq.com/openai/v1/models",
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    httpStatus = modelsResponse.status;
+    if (!modelsResponse.ok) {
+      const errorText = await modelsResponse.text();
+      throw new Error(
+        errorText || `Groq model list returned HTTP ${httpStatus}`,
+      );
+    }
+
+    const modelsResult = await modelsResponse.json();
+    const models = Array.isArray(modelsResult.data) ? modelsResult.data : [];
+    const textModels = models.filter(
+      (model) =>
+        typeof model?.id === "string" &&
+        !/whisper|guard/iu.test(model.id) &&
+        model.active !== false &&
+        model.capabilities?.completion_chat !== false,
+    );
+    const model =
+      textModels.find((candidate) => /llama|gpt-oss/iu.test(candidate.id)) ??
+      textModels[0];
+    if (!model) {
+      throw new Error("Groq model list did not contain an available text model");
+    }
+
+    endpoint = "chat/completions";
     const chatResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -250,7 +278,7 @@ const getGroqAnswer = async (env, question) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: model.id,
           messages: [
             { role: "system", content: GROQ_SYSTEM_PROMPT },
             { role: "user", content: question },
@@ -279,7 +307,7 @@ const getGroqAnswer = async (env, question) => {
     console.error("Groq request failed", error);
     const errorText =
       error instanceof Error ? error.message : String(error);
-    const diagnostic = `Groq chat error (api.groq.com/openai/v1/chat/completions); HTTP ${
+    const diagnostic = `Groq ${endpoint} error (api.groq.com/openai/v1/${endpoint}); HTTP ${
       httpStatus ?? "status unavailable"
     }: ${errorText}`;
     try {
@@ -362,7 +390,6 @@ const handleTelegramWebhook = async (request, env) => {
       message.contact ||
       (text &&
         (hasPhoneNumber(text) ||
-          isOrderRequest(text) ||
           /(?:^|\s)@[a-zA-Z0-9_]{5,32}\b/u.test(text)))
     ) {
       await notifyOwnerAboutLead(env, message, text);
