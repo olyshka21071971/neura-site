@@ -236,15 +236,18 @@ const isOrderRequest = (text) =>
   );
 
 const getGigaChatAnswer = async (env, question) => {
-  if (!env.GIGACHAT_AUTH_KEY) return null;
+  const authKey = (env.GIGACHAT_AUTH_KEY || "").trim();
+  if (!authKey) return null;
 
+  let requestStage = "token";
+  let httpStatus = null;
   try {
     const tokenResponse = await fetch(
       "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
       {
         method: "POST",
         headers: {
-          Authorization: `Basic ${env.GIGACHAT_AUTH_KEY}`,
+          Authorization: `Basic ${authKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
           RqUID: crypto.randomUUID(),
         },
@@ -252,8 +255,12 @@ const getGigaChatAnswer = async (env, question) => {
         signal: AbortSignal.timeout(10000),
       },
     );
-    if (!tokenResponse.ok) {
-      throw new Error(`GigaChat token request returned HTTP ${tokenResponse.status}`);
+    httpStatus = tokenResponse.status;
+    if (httpStatus !== 200) {
+      const errorText = await tokenResponse.text();
+      throw new Error(
+        errorText || `GigaChat token request returned HTTP ${httpStatus}`,
+      );
     }
 
     const tokenResult = await tokenResponse.json();
@@ -261,6 +268,8 @@ const getGigaChatAnswer = async (env, question) => {
       throw new Error("GigaChat token response did not contain an access token");
     }
 
+    requestStage = "chat";
+    httpStatus = null;
     const chatResponse = await fetch(
       "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
       {
@@ -281,8 +290,12 @@ const getGigaChatAnswer = async (env, question) => {
         signal: AbortSignal.timeout(20000),
       },
     );
-    if (!chatResponse.ok) {
-      throw new Error(`GigaChat completion returned HTTP ${chatResponse.status}`);
+    httpStatus = chatResponse.status;
+    if (httpStatus !== 200) {
+      const errorText = await chatResponse.text();
+      throw new Error(
+        errorText || `GigaChat completion returned HTTP ${httpStatus}`,
+      );
     }
 
     const chatResult = await chatResponse.json();
@@ -293,6 +306,20 @@ const getGigaChatAnswer = async (env, question) => {
     return answer.trim().slice(0, 4000);
   } catch (error) {
     console.error("GigaChat request failed", error);
+    const errorText =
+      error instanceof Error ? error.message : String(error);
+    const endpoint =
+      requestStage === "token"
+        ? "ngw.devices.sberbank.ru"
+        : "gigachat.devices.sberbank.ru";
+    const diagnostic = `GigaChat ${requestStage} error (${endpoint}); HTTP ${
+      httpStatus ?? "status unavailable"
+    }: ${errorText}`;
+    try {
+      await sendBotMessage(env, env.TELEGRAM_CHAT_ID, diagnostic);
+    } catch (notificationError) {
+      console.error("Could not notify owner about GigaChat error", notificationError);
+    }
     return null;
   }
 };
