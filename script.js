@@ -43,18 +43,12 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
 
 const revealElements = document.querySelectorAll(".reveal");
 if ("IntersectionObserver" in window) {
-  const revealTimers = new Map();
-  const showRevealElement = (element, observer) => {
-    window.clearTimeout(revealTimers.get(element));
-    element.classList.add("visible");
-    observer.unobserve(element);
-    revealTimers.delete(element);
-  };
   const revealObserver = new IntersectionObserver(
     (entries, observer) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          showRevealElement(entry.target, observer);
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
         }
       });
     },
@@ -63,14 +57,25 @@ if ("IntersectionObserver" in window) {
   document.documentElement.classList.add("js");
   revealElements.forEach((element) => {
     revealObserver.observe(element);
-    revealTimers.set(
-      element,
-      window.setTimeout(() => showRevealElement(element, revealObserver), 2500),
-    );
   });
 } else {
   revealElements.forEach((element) => element.classList.add("visible"));
 }
+
+const faqList = document.querySelector(".faq-list");
+faqList?.addEventListener("click", (event) => {
+  const button = event.target.closest(".faq-question");
+  if (!button) return;
+
+  const shouldExpand = button.getAttribute("aria-expanded") !== "true";
+  faqList.querySelectorAll(".faq-question").forEach((question) => {
+    const isExpanded = question === button && shouldExpand;
+    question.setAttribute("aria-expanded", String(isExpanded));
+    document
+      .getElementById(question.getAttribute("aria-controls"))
+      ?.setAttribute("aria-hidden", String(!isExpanded));
+  });
+});
 
 const contactForm = document.getElementById("contact-form");
 const toast = document.getElementById("toast");
@@ -153,6 +158,191 @@ contactForm.addEventListener("submit", async (event) => {
   }
 });
 
+const quizForm = document.getElementById("quiz-form");
+const quizSteps = [...quizForm.querySelectorAll("[data-quiz-step]")];
+const quizBackButton = document.getElementById("quiz-back");
+const quizNextButton = document.getElementById("quiz-next");
+const quizStepLabel = document.getElementById("quiz-step-label");
+const quizProgressPercent = document.getElementById("quiz-progress-percent");
+const quizProgressTrack = document.getElementById("quiz-progress-track");
+const quizProgressFill = document.getElementById("quiz-progress-fill");
+const quizTotal = document.getElementById("quiz-total");
+const quizDuration = document.getElementById("quiz-duration");
+const quizSummaryList = document.getElementById("quiz-summary-list");
+const rubleFormatter = new Intl.NumberFormat("ru-RU");
+let currentQuizStep = 1;
+
+const formatRubles = (amount) => `${rubleFormatter.format(amount)} ₽`;
+
+const getQuizSelection = () => {
+  const project = quizForm.querySelector('input[name="project"]:checked');
+  const modules = [
+    ...quizForm.querySelectorAll('input[name="module"]:checked'),
+  ];
+  const urgency = quizForm.querySelector('input[name="urgency"]:checked');
+  const basePrice = Number(project.dataset.price);
+  const modulePrice = modules.reduce(
+    (total, module) => total + Number(module.dataset.price),
+    0,
+  );
+  const subtotal = basePrice + modulePrice;
+  const percent = Number(urgency.dataset.percent);
+  const total = Math.round(subtotal * (1 + percent / 100));
+
+  return {
+    project,
+    modules,
+    urgency,
+    subtotal,
+    total,
+    rushFee: total - subtotal,
+    duration:
+      percent > 0
+        ? "Ориентировочный срок: до 24 часов"
+        : `Ориентировочный срок: ${project.dataset.duration}`,
+  };
+};
+
+const addQuizSummaryRow = (label, price) => {
+  const item = document.createElement("li");
+  const title = document.createElement("span");
+  const amount = document.createElement("span");
+  title.textContent = label;
+  amount.textContent = price;
+  item.append(title, amount);
+  quizSummaryList.append(item);
+};
+
+const renderQuizResult = () => {
+  const selection = getQuizSelection();
+  quizTotal.textContent = formatRubles(selection.total);
+  quizDuration.textContent = selection.duration;
+  quizSummaryList.replaceChildren();
+  addQuizSummaryRow(
+    selection.project.value,
+    formatRubles(Number(selection.project.dataset.price)),
+  );
+  if (selection.modules.length) {
+    selection.modules.forEach((module) => {
+      const price = Number(module.dataset.price);
+      addQuizSummaryRow(
+        module.value,
+        price === 0 ? "Бесплатно" : `+${formatRubles(price)}`,
+      );
+    });
+  } else {
+    addQuizSummaryRow("Дополнительные модули не выбраны", "—");
+  }
+  addQuizSummaryRow(
+    selection.urgency.value,
+    selection.rushFee > 0 ? `+${formatRubles(selection.rushFee)}` : "Без доплаты",
+  );
+};
+
+const updateQuizStep = () => {
+  quizSteps.forEach((step) => {
+    step.hidden = Number(step.dataset.quizStep) !== currentQuizStep;
+  });
+  const progress = (currentQuizStep / quizSteps.length) * 100;
+  quizStepLabel.textContent = `Шаг ${currentQuizStep} из ${quizSteps.length}`;
+  quizProgressPercent.textContent = `${progress}%`;
+  quizProgressTrack.setAttribute("aria-valuenow", String(currentQuizStep));
+  quizProgressFill.style.width = `${progress}%`;
+  quizBackButton.disabled = currentQuizStep === 1;
+  quizNextButton.hidden = currentQuizStep === quizSteps.length;
+
+  if (currentQuizStep === quizSteps.length) {
+    renderQuizResult();
+  }
+};
+
+const canContinueQuiz = () => {
+  if (currentQuizStep === 1) {
+    return Boolean(quizForm.querySelector('input[name="project"]:checked'));
+  }
+  if (currentQuizStep === 3) {
+    return Boolean(quizForm.querySelector('input[name="urgency"]:checked'));
+  }
+  return true;
+};
+
+quizForm.addEventListener("change", () => {
+  quizNextButton.disabled = !canContinueQuiz();
+});
+
+quizNextButton.addEventListener("click", () => {
+  if (!canContinueQuiz()) {
+    showToast(
+      currentQuizStep === 1
+        ? "Выберите, что будем разрабатывать."
+        : "Выберите срок запуска.",
+    );
+    return;
+  }
+  currentQuizStep = Math.min(currentQuizStep + 1, quizSteps.length);
+  updateQuizStep();
+});
+
+quizBackButton.addEventListener("click", () => {
+  currentQuizStep = Math.max(currentQuizStep - 1, 1);
+  updateQuizStep();
+});
+
+quizForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!quizForm.reportValidity()) return;
+
+  if (!canSubmit("quiz-form")) {
+    showToast("Пожалуйста, подождите 30 секунд перед повторной отправкой.");
+    return;
+  }
+
+  const selection = getQuizSelection();
+  const formData = new FormData(quizForm);
+  const submitButton = quizForm.querySelector('button[type="submit"]');
+  const selectedItems = [
+    `${selection.project.value} — ${formatRubles(Number(selection.project.dataset.price))}`,
+    ...selection.modules.map((module) => {
+      const price = Number(module.dataset.price);
+      return `${module.value} — ${price ? `+${formatRubles(price)}` : "бесплатно"}`;
+    }),
+    `${selection.urgency.value}${selection.rushFee ? ` — доплата ${formatRubles(selection.rushFee)}` : ""}`,
+  ];
+  const message = [
+    "Расчёт проекта:",
+    ...selectedItems.map((item) => `• ${item}`),
+    `Итоговая стоимость: ${formatRubles(selection.total)}`,
+    selection.duration,
+  ].join("\n");
+
+  submitButton.disabled = true;
+  quizForm.setAttribute("aria-busy", "true");
+  showToast("Отправляем расчёт...");
+  try {
+    await sendLead({
+      name: formData.get("client-name").trim(),
+      contact: formData.get("client-contact").trim(),
+      tariff: selection.project.value,
+      message,
+    });
+    recordSubmit("quiz-form");
+    showToast("Расчёт отправлен — скоро свяжемся с вами");
+    quizForm.reset();
+    currentQuizStep = 1;
+    updateQuizStep();
+    quizNextButton.disabled = true;
+  } catch (error) {
+    console.error("Не удалось отправить расчёт:", error.message);
+    showToast("Не удалось отправить расчёт. Попробуйте еще раз позже.");
+  } finally {
+    submitButton.disabled = false;
+    quizForm.removeAttribute("aria-busy");
+  }
+});
+
+updateQuizStep();
+quizNextButton.disabled = true;
+
 const chatWidget = document.querySelector(".chat-widget");
 const chatLauncher = document.getElementById("chat-launcher");
 const chatPanel = document.getElementById("chat-panel");
@@ -162,6 +352,7 @@ const chatQuickReplies = chatMessages.querySelector(".chat-quick-replies");
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
 const assistantBadge = document.getElementById("assistant-badge");
+const assistantCard = document.getElementById("assistant-card");
 let chatLead = null;
 let chatLeadSubmitting = false;
 
@@ -313,9 +504,12 @@ chatLauncher.addEventListener("click", () => {
   setChatOpen(chatPanel.hidden);
 });
 
-assistantBadge?.addEventListener("click", () => {
+const openAssistantChat = () => {
   setChatOpen(true);
-});
+};
+
+assistantBadge?.addEventListener("click", openAssistantChat);
+assistantCard?.addEventListener("click", openAssistantChat);
 
 chatClose.addEventListener("click", () => setChatOpen(false));
 

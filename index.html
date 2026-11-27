@@ -306,7 +306,13 @@
           <div class="work-visual reveal reveal-delay">
             <div class="orb orb-one"></div>
             <div class="orb orb-two"></div>
-            <div class="glass-panel">
+            <button
+              class="glass-panel"
+              id="assistant-card"
+              type="button"
+              aria-label="Открыть чат с ИИ-ассистентом"
+              aria-controls="chat-panel"
+            >
               <div class="panel-head">
                 <span>AI / Lead Assistant</span><i></i>
               </div>
@@ -314,8 +320,9 @@
               <div class="chat-line bot">
                 Отлично. Расскажите, кто ваша аудитория?
               </div>
-              <div class="typing"><span></span><span></span><span></span></div>
-            </div>
+              <div class="typing" aria-hidden="true"><span></span><span></span><span></span></div>
+              <span class="assistant-card-hint" aria-hidden="true">Нажмите, чтобы начать диалог →</span>
+            </button>
           </div>
         </div>
       </section>
@@ -373,6 +380,343 @@
               <a href="#contact" class="btn btn-outline">Выбрать</a>
             </article>
           </div>
+        </div>
+      </section>
+
+      <section id="faq" class="faq section section-bg">
+        <div class="container">
+          <div class="section-header reveal">
+            <div class="eyebrow"><span></span> FAQ</div>
+            <h2>Частые вопросы</h2>
+            <p>Коротко о процессе, сроках и поддержке.</p>
+          </div>
+          <div class="faq-list">
+            <article class="faq-item reveal">
+              <h3>
+                <button
+                  class="faq-question"
+                  id="faq-question-1"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="faq-answer-1"
+                >
+                  <span>Сколько времени занимает запуск?</span>
+                  <span class="faq-icon" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div
+                class="faq-answer"
+                id="faq-answer-1"
+                role="region"
+                aria-labelledby="faq-question-1"
+                aria-hidden="true"
+              >
+                <div class="faq-answer-inner">
+                  <p>
+                    Лендинг под ключ обычно готов за 1–3 дня. Если нужны чат-бот
+                    или ИИ-агент, срок составит 2–4 дня — точнее подскажем после
+                    обсуждения задачи.
+                  </p>
+                </div>
+              </div>
+            </article>
+            <article class="faq-item reveal reveal-delay">
+              <h3>
+                <button
+                  class="faq-question"
+                  id="faq-question-2"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="faq-answer-2"
+                >
+                  <span>Куда приходят заявки с сайта?</span>
+                  <span class="faq-icon" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div
+                class="faq-answer"
+                id="faq-answer-2"
+                role="region"
+                aria-labelledby="faq-question-2"
+                aria-hidden="true"
+              >
+                <div class="faq-answer-inner">
+                  <p>
+                    Заявки из форм и чат-бота можно получать в Telegram. Настроим
+                    передачу вместе с запуском сайта и проверим её работу.
+                  </p>
+                </div>
+              </div>
+            </article>
+            <article class="faq-item reveal reveal-delay-two">
+              <h3>
+                <button
+                  class="faq-question"
+                  id="faq-question-3"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="faq-answer-3"
+                >
+                  <span>Можно ли обратиться за поддержкой после запуска?</span>
+                  <span class="faq-icon" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div
+                class="faq-answer"
+                id="faq-answer-3"
+                role="region"
+                aria-labelledby="faq-question-3"
+                aria-hidden="true"
+              >
+                <div class="faq-answer-inner">
+                  <p>
+                    Да. Поможем с техническими вопросами и дальнейшим развитием
+                    проекта — формат поддержки обсудим индивидуально.
+                  </p>
+                </div>
+              </div>
+            </article>
+            <article class="faq-item reveal reveal-delay-two">
+              <h3>
+                <button
+                  class="faq-question"
+                  id="faq-question-4"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="faq-answer-4"
+                >
+                  <span>В стоимость входят правки?</span>
+                  <span class="faq-icon" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div
+                class="faq-answer"
+                id="faq-answer-4"
+                role="region"
+                aria-labelledby="faq-question-4"
+                aria-hidden="true"
+              >
+                <div class="faq-answer-inner">
+                  <p>
+                    Да, в процессе согласования предусмотрены правки. Их объём
+                    и этапы фиксируем заранее, чтобы результат соответствовал
+                    вашей задаче.
+                  </p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="quiz" class="quiz section">
+        <div class="container">
+          <div class="section-header quiz-header reveal">
+            <div class="eyebrow"><span></span> Быстрый расчёт</div>
+            <h2>Рассчитайте стоимость и срок запуска за 30 секунд</h2>
+          </div>
+
+          <form class="quiz-card reveal" id="quiz-form" autocomplete="off">
+            <div class="quiz-progress">
+              <div class="quiz-progress-heading">
+                <span id="quiz-step-label">Шаг 1 из 4</span>
+                <span id="quiz-progress-percent">25%</span>
+              </div>
+              <div
+                class="quiz-progress-track"
+                id="quiz-progress-track"
+                role="progressbar"
+                aria-label="Прогресс расчёта"
+                aria-valuemin="1"
+                aria-valuemax="4"
+                aria-valuenow="1"
+              >
+                <span id="quiz-progress-fill"></span>
+              </div>
+            </div>
+
+            <div class="quiz-step reveal" data-quiz-step="1">
+              <h3>Что разрабатываем?</h3>
+              <p class="quiz-step-description">Выберите основу вашего проекта</p>
+              <div class="quiz-options">
+                <label class="quiz-option">
+                  <input
+                    type="radio"
+                    name="project"
+                    value="Продающий лендинг под ключ"
+                    data-price="15000"
+                    data-duration="1–3 дня"
+                    required
+                  />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Продающий лендинг под ключ</span>
+                    <span class="quiz-option-meta">1–3 дня</span>
+                    <span class="quiz-option-price">15 000 ₽</span>
+                  </span>
+                </label>
+                <label class="quiz-option">
+                  <input
+                    type="radio"
+                    name="project"
+                    value="Лендинг + ИИ-чат-бот"
+                    data-price="22000"
+                    data-duration="2–4 дня"
+                    required
+                  />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Лендинг + ИИ-чат-бот</span>
+                    <span class="quiz-option-meta">2–4 дня</span>
+                    <span class="quiz-option-price">22 000 ₽</span>
+                  </span>
+                </label>
+                <label class="quiz-option">
+                  <input
+                    type="radio"
+                    name="project"
+                    value="Комплекс: Сайт + Чат-бот + ИИ-агент"
+                    data-price="30000"
+                    data-duration="3–5 дней"
+                    required
+                  />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Комплекс: Сайт + Чат-бот + ИИ-агент</span>
+                    <span class="quiz-option-meta">3–5 дней</span>
+                    <span class="quiz-option-price">30 000 ₽</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="quiz-step reveal" data-quiz-step="2" hidden>
+              <h3>Дополнительные модули</h3>
+              <p class="quiz-step-description">Можно выбрать несколько</p>
+              <div class="quiz-options">
+                <label class="quiz-option">
+                  <input type="checkbox" name="module" value="Интерактивный квиз-калькулятор" data-price="3000" />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Интерактивный квиз-калькулятор</span>
+                    <span class="quiz-option-price">+3 000 ₽</span>
+                  </span>
+                </label>
+                <label class="quiz-option">
+                  <input type="checkbox" name="module" value="Приём заявок в Telegram-бот" data-price="2000" />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Приём заявок в Telegram-бот</span>
+                    <span class="quiz-option-price">+2 000 ₽</span>
+                  </span>
+                </label>
+                <label class="quiz-option">
+                  <input type="checkbox" name="module" value="Генерация текстов и визуала с ИИ" data-price="2500" />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Генерация текстов и визуала с ИИ</span>
+                    <span class="quiz-option-price">+2 500 ₽</span>
+                  </span>
+                </label>
+                <label class="quiz-option">
+                  <input type="checkbox" name="module" value="Публикация на облачном хостинге с HTTPS" data-price="0" />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Публикация на облачном хостинге с HTTPS</span>
+                    <span class="quiz-option-price">Бесплатно</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="quiz-step reveal" data-quiz-step="3" hidden>
+              <h3>Срочность запуска</h3>
+              <p class="quiz-step-description">Выберите подходящий срок</p>
+              <div class="quiz-options">
+                <label class="quiz-option">
+                  <input
+                    type="radio"
+                    name="urgency"
+                    value="Стандартный запуск (1–4 дня)"
+                    data-percent="0"
+                    required
+                  />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Стандартный запуск (1–4 дня)</span>
+                    <span class="quiz-option-meta">Без доплаты</span>
+                  </span>
+                </label>
+                <label class="quiz-option">
+                  <input
+                    type="radio"
+                    name="urgency"
+                    value="Экспресс-запуск за 24 часа"
+                    data-percent="30"
+                    required
+                  />
+                  <span class="quiz-option-content">
+                    <span class="quiz-option-title">Экспресс-запуск за 24 часа</span>
+                    <span class="quiz-option-price">+30% к сумме</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="quiz-step reveal" data-quiz-step="4" hidden>
+              <h3>Ваш расчёт готов</h3>
+              <div class="quiz-result">
+                <span class="quiz-result-label">Итоговая стоимость</span>
+                <strong class="quiz-result-price" id="quiz-total">0 ₽</strong>
+                <span class="quiz-result-duration" id="quiz-duration"></span>
+              </div>
+              <div class="quiz-summary">
+                <h4>Вы выбрали</h4>
+                <ul id="quiz-summary-list"></ul>
+              </div>
+              <p class="quiz-step-description">Оставьте контакты — отправим расчёт и обсудим детали</p>
+              <div class="quiz-contact-fields">
+                <div class="form-group">
+                  <label for="quiz-name">Ваше имя</label>
+                  <input
+                    type="text"
+                    id="quiz-name"
+                    name="client-name"
+                    placeholder="Как к вам обращаться"
+                    autocomplete="off"
+                    maxlength="120"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="quiz-contact">Телефон или Telegram</label>
+                  <input
+                    type="text"
+                    id="quiz-contact"
+                    name="client-contact"
+                    placeholder="+7 999 000-00-00 или @username"
+                    autocomplete="off"
+                    maxlength="200"
+                    required
+                  />
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-large quiz-submit">
+                Отправить расчёт
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path
+                    d="M4 10h12M11 5l5 5-5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div class="quiz-navigation">
+              <button type="button" class="btn btn-ghost" id="quiz-back" disabled>
+                Назад
+              </button>
+              <button type="button" class="btn btn-primary" id="quiz-next">
+                Далее
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -458,6 +802,8 @@
           </div>
         </div>
       </section>
+
+
     </main>
 
     <footer class="footer">
