@@ -158,6 +158,40 @@ contactForm.addEventListener("submit", async (event) => {
   }
 });
 
+const leadMagnetForm = document.getElementById("lead-magnet-form");
+
+leadMagnetForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!leadMagnetForm.reportValidity()) return;
+  if (honeypotValue(leadMagnetForm) !== "") return;
+  if (!canSubmit("lead-magnet-form")) {
+    showToast("Пожалуйста, подождите 30 секунд перед повторной отправкой.");
+    return;
+  }
+
+  const formData = new FormData(leadMagnetForm);
+  const submitButton = leadMagnetForm.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  leadMagnetForm.setAttribute("aria-busy", "true");
+  showToast("Отправляем запрос на подарок...");
+  try {
+    await sendLead({
+      name: "Лид-магнит с сайта",
+      contact: formData.get("contact").trim(),
+      message: "Лид-магнит: чек-лист «7 ошибок сайта и Telegram» и бесплатный прототип первого экрана за 24 часа.",
+    });
+    recordSubmit("lead-magnet-form");
+    showToast("Запрос отправлен — скоро свяжемся с вами");
+    leadMagnetForm.reset();
+  } catch (error) {
+    console.error("Не удалось отправить запрос на лид-магнит:", error.message);
+    showToast("Не удалось отправить запрос. Попробуйте еще раз позже.");
+  } finally {
+    submitButton.disabled = false;
+    leadMagnetForm.removeAttribute("aria-busy");
+  }
+});
+
 const quizForm = document.getElementById("quiz-form");
 const quizSteps = [...quizForm.querySelectorAll("[data-quiz-step]")];
 const quizBackButton = document.getElementById("quiz-back");
