@@ -13,7 +13,7 @@ const TELEGRAM_REPLY_KEYBOARD = {
   ],
   resize_keyboard: true,
 };
-const GIGACHAT_SYSTEM_PROMPT =
+const GROQ_SYSTEM_PROMPT =
   "Ты — вежливый и дружелюбный ИИ-менеджер по продажам веб-студии Neura. " +
   "Кратко отвечай на вопросы о создании сайтов и ИИ-решениях, не обещай того, чего нет в тарифах. " +
   "Тарифы Neura: 1) продающий лендинг под ключ — 15 000 ₽, срок 1–3 дня; " +
@@ -235,53 +235,24 @@ const isOrderRequest = (text) =>
     text,
   );
 
-const getGigaChatAnswer = async (env, question) => {
-  const authKey = (env.GIGACHAT_AUTH_KEY || "").trim();
-  if (!authKey) return null;
+const getGroqAnswer = async (env, question) => {
+  const apiKey = env.GROQ_API_KEY?.trim();
+  if (!apiKey) return null;
 
-  let requestStage = "token";
   let httpStatus = null;
   try {
-    const tokenResponse = await fetch(
-      "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${authKey}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-          RqUID: crypto.randomUUID(),
-        },
-        body: "scope=GIGACHAT_API_PERS",
-        signal: AbortSignal.timeout(10000),
-      },
-    );
-    httpStatus = tokenResponse.status;
-    if (httpStatus !== 200) {
-      const errorText = await tokenResponse.text();
-      throw new Error(
-        errorText || `GigaChat token request returned HTTP ${httpStatus}`,
-      );
-    }
-
-    const tokenResult = await tokenResponse.json();
-    if (typeof tokenResult.access_token !== "string" || !tokenResult.access_token) {
-      throw new Error("GigaChat token response did not contain an access token");
-    }
-
-    requestStage = "chat";
-    httpStatus = null;
     const chatResponse = await fetch(
-      "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${tokenResult.access_token}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "GigaChat",
+          model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: GIGACHAT_SYSTEM_PROMPT },
+            { role: "system", content: GROQ_SYSTEM_PROMPT },
             { role: "user", content: question },
           ],
           temperature: 0.7,
@@ -291,39 +262,34 @@ const getGigaChatAnswer = async (env, question) => {
       },
     );
     httpStatus = chatResponse.status;
-    if (httpStatus !== 200) {
+    if (!chatResponse.ok) {
       const errorText = await chatResponse.text();
       throw new Error(
-        errorText || `GigaChat completion returned HTTP ${httpStatus}`,
+        errorText || `Groq completion returned HTTP ${httpStatus}`,
       );
     }
 
     const chatResult = await chatResponse.json();
     const answer = chatResult.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      throw new Error("GigaChat response did not contain an answer");
+      throw new Error("Groq response did not contain an answer");
     }
     return answer.trim().slice(0, 4000);
   } catch (error) {
-    console.error("GigaChat request failed", error);
+    console.error("Groq request failed", error);
     const errorText =
       error instanceof Error ? error.message : String(error);
-    const endpoint =
-      requestStage === "token"
-        ? "ngw.devices.sberbank.ru"
-        : "gigachat.devices.sberbank.ru";
-    const diagnostic = `GigaChat ${requestStage} error (${endpoint}); HTTP ${
+    const diagnostic = `Groq chat error (api.groq.com/openai/v1/chat/completions); HTTP ${
       httpStatus ?? "status unavailable"
     }: ${errorText}`;
     try {
       await sendBotMessage(env, env.TELEGRAM_CHAT_ID, diagnostic);
     } catch (notificationError) {
-      console.error("Could not notify owner about GigaChat error", notificationError);
+      console.error("Could not notify owner about Groq error", notificationError);
     }
     return null;
   }
 };
-
 const handleTelegramWebhook = async (request, env) => {
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return errorResponse("Expected application/json", 415);
@@ -407,7 +373,7 @@ const handleTelegramWebhook = async (request, env) => {
         { reply_markup: TELEGRAM_REPLY_KEYBOARD },
       );
     } else if (text) {
-      const answer = await getGigaChatAnswer(env, text);
+      const answer = await getGroqAnswer(env, text);
       await sendBotMessage(env, chatId, answer || TELEGRAM_BOT_FALLBACK, {
         reply_markup: TELEGRAM_REPLY_KEYBOARD,
       });
